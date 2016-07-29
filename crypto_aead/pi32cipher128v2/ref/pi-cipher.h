@@ -1,7 +1,6 @@
-/* pi16cipher.h */
+/* pi-cipher.h */
 /*
-    This file is part of the AVR-Crypto-Lib.
-    Copyright (C) 2015 Daniel Otte (daniel.otte@rub.de)
+    Copyright (C) 2014-2016 bg nerilex (bg@nerilex.org)
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,25 +18,6 @@
 
 #ifndef PI_CIPHER_H_
 #define PI_CIPHER_H_
-
-/* pi16cipher.c */
-/*
-    This file is part of the AVR-Crypto-Lib.
-    Copyright (C) 2006-2015 Daniel Otte (bg@nerilex.org)
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
 
 /* please define PI_SIZE acoording to the primitive to implement (pi16cipher, pi32cipher or pi64cipher) */
 #define PI_SIZE 32
@@ -99,7 +79,7 @@ typedef u64 uint64_t;
 #define INIT_NAME(x)                    pi ## x ## _init
 #define PROCESS_AD_BLOCK_NAME(x)        pi ## x ## _process_ad_block
 #define PROCESS_AD_LAST_BLOCK_NAME(x)   pi ## x ## _process_ad_last_block
-#define PROCESS_SMN_NAME(x)             pi ## x ## _process_smn
+#define ENCRYPT_SMN_NAME(x)             pi ## x ## _encrypt_smn
 #define DECRYPT_SMN_NAME(x)             pi ## x ## _decrypt_smn
 #define ENCRYPT_BLOCK_NAME(x)           pi ## x ## _encrypt_block
 #define ENCRYPT_LAST_BLOCK_NAME(x)      pi ## x ## _encrypt_last_block
@@ -116,7 +96,7 @@ typedef u64 uint64_t;
 #define PI_INIT                         NAME(INIT_NAME, PI_WORD_SIZE)
 #define PI_PROCESS_AD_BLOCK             NAME(PROCESS_AD_BLOCK_NAME, PI_WORD_SIZE)
 #define PI_PROCESS_AD_LAST_BLOCK        NAME(PROCESS_AD_LAST_BLOCK_NAME, PI_WORD_SIZE)
-#define PI_PROCESS_SMN                  NAME(PROCESS_SMN_NAME, PI_WORD_SIZE)
+#define PI_ENCRYPT_SMN                  NAME(ENCRYPT_SMN_NAME, PI_WORD_SIZE)
 #define PI_DECRYPT_SMN                  NAME(DECRYPT_SMN_NAME, PI_WORD_SIZE)
 #define PI_ENCRYPT_BLOCK                NAME(ENCRYPT_BLOCK_NAME, PI_WORD_SIZE)
 #define PI_ENCRYPT_LAST_BLOCK           NAME(ENCRYPT_LAST_BLOCK_NAME, PI_WORD_SIZE)
@@ -140,9 +120,9 @@ typedef struct {
 int PI_INIT(
         PI_CTX *ctx,
         const void *key,
-        size_t key_length_b,
+        size_t key_length_B,
         const void *pmn,
-        size_t pmn_length_b);
+        size_t pmn_length_B);
 
 void PI_PROCESS_AD_BLOCK(
         PI_CTX *ctx,
@@ -152,10 +132,10 @@ void PI_PROCESS_AD_BLOCK(
 void PI_PROCESS_AD_LAST_BLOCK(
         PI_CTX *ctx,
         const void *ad,
-        size_t ad_length_b,
+        size_t ad_length_B,
         unsigned long ad_num );
 
-void PI_PROCESS_SMN(
+void PI_ENCRYPT_SMN(
         PI_CTX *ctx,
         void *c0,
         const void *smn);
@@ -170,7 +150,7 @@ void PI_ENCRYPT_LAST_BLOCK(
         PI_CTX *ctx,
         void *dest,
         const void *src,
-        size_t length_b,
+        size_t length_B,
 		unsigned long  num );
 
 void PI_EXTRACT_TAG(
@@ -187,14 +167,12 @@ void PI_DECRYPT_LAST_BLOCK(
         PI_CTX *ctx,
         void *dest,
         const void *src,
-        size_t length_b,
+        size_t length_B,
 		unsigned long  num );
 
 void PI_ENCRYPT_SIMPLE(
         void *cipher,
         size_t *cipher_len_B,
-        void *tag,
-        size_t *tag_length_B,
         const void *msg,
         size_t msg_len_B,
         const void *ad,

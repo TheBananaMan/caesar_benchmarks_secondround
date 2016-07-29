@@ -1,7 +1,6 @@
 /* pi-cipher.c */
 /*
-    This file is part of the AVR-Crypto-Lib.
-    Copyright (C) 2006-2015 Daniel Otte (bg@nerilex.org)
+    Copyright (C) 2014-2016 bg nerilex (bg@nerilex.org)
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,26 +25,43 @@
 
 #define DEBUG 0
 
+#ifdef LITTLE_ENDIAN
+#undef LITTLE_ENDIAN
+#endif
+
+#if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
+#define LITTLE_ENDIAN 1
+#else
+#define LITTLE_ENDIAN 0
+#endif
+
 #if (PI_WORD_SIZE == 16)
 #  define load_word_little(mem) load_u16_little(mem)
 #  define store_word_little(mem, val) store_u16_little((mem), (val))
 #  define PRI_xw "04"PRIx16
 
-
-static uint16_t load_u16_little(const void *mem)
+static inline uint16_t load_u16_little(const void *mem)
 {
+#if LITTLE_ENDIAN
+	return *(uint16_t *)mem;
+#else
 	uint16_t ret;
 	const uint8_t *x = (const uint8_t *)mem;
 	ret =   x[0] <<  0
 	      | x[1] <<  8;
 	return ret;
+#endif
 }
 
-static void store_u16_little(void *mem, uint16_t val)
+static inline void store_u16_little(void *mem, uint16_t val)
 {
+#if LITTLE_ENDIAN
+	*(uint16_t *)mem = val;
+#else
 	uint8_t *x = (uint8_t *)mem;
 	x[0] = val & 0xff; val >>= 8;
 	x[1] = val & 0xff;
+#endif
 }
 
 #elif (PI_WORD_SIZE == 32)
@@ -53,8 +69,11 @@ static void store_u16_little(void *mem, uint16_t val)
 #  define store_word_little(mem, val) store_u32_little((mem), (val))
 #  define PRI_xw "08"PRIx32
 
-static uint32_t load_u32_little(const void *mem)
+static inline uint32_t load_u32_little(const void *mem)
 {
+#if LITTLE_ENDIAN
+	return *(uint32_t *)mem;
+#else
 	uint32_t ret;
 	const uint8_t *x = (const uint8_t *)mem;
 	ret =   (uint32_t)x[0] <<  0
@@ -62,15 +81,20 @@ static uint32_t load_u32_little(const void *mem)
 	      | (uint32_t)x[2] << 16
 	      | (uint32_t)x[3] << 24;
 	return ret;
+#endif
 }
 
-static void store_u32_little(void *mem, uint32_t val)
+static inline void store_u32_little(void *mem, uint32_t val)
 {
+#if LITTLE_ENDIAN
+	*(uint32_t *)mem = val;
+#else
 	uint8_t *x = (uint8_t *)mem;
 	x[0] = val & 0xff; val >>= 8;
 	x[1] = val & 0xff; val >>= 8;
 	x[2] = val & 0xff; val >>= 8;
 	x[3] = val & 0xff;
+#endif
 }
 
 #elif (PI_WORD_SIZE == 64)
@@ -78,8 +102,11 @@ static void store_u32_little(void *mem, uint32_t val)
 #  define store_word_little(mem, val) store_u64_little((mem), (val))
 #  define PRI_xw "016"PRIx64
 
-static uint64_t load_u64_little(const void *mem)
+static inline uint64_t load_u64_little(const void *mem)
 {
+#if LITTLE_ENDIAN
+	return *(uint64_t *)mem;
+#else
 	uint64_t ret;
 	const uint8_t *x = (const uint8_t *)mem;
 	ret =   (uint64_t)x[0] <<  0
@@ -91,10 +118,14 @@ static uint64_t load_u64_little(const void *mem)
 	      | (uint64_t)x[6] << 48
 	      | (uint64_t)x[7] << 56;
 	return ret;
+#endif
 }
 
-static void store_u64_little(void *mem, uint64_t val)
+static inline void store_u64_little(void *mem, uint64_t val)
 {
+#if LITTLE_ENDIAN
+	*(uint64_t *)mem = val;
+#else
 	uint8_t *x = (uint8_t *)mem;
 	x[0] = val & 0xff; val >>= 8;
 	x[1] = val & 0xff; val >>= 8;
@@ -104,6 +135,7 @@ static void store_u64_little(void *mem, uint64_t val)
 	x[5] = val & 0xff; val >>= 8;
 	x[6] = val & 0xff; val >>= 8;
 	x[7] = val & 0xff;
+#endif
 }
 
 #endif
@@ -167,85 +199,54 @@ static void dump_state(const word_t* a)
 #endif
 
 
-static word_t rotl(word_t x, uint8_t n)
+static inline word_t rotl(word_t x, uint8_t n)
 {
     return (x << n) | (x >> ((PI_WORD_SIZE) - n));
 }
 
-static void phi(
+static inline void mu(
         word_t dest[4],
-        const word_t x[4],
-        const word_t c[4],
-        const uint8_t v[8],
-        const uint8_t rot[4])
+        const word_t x[4])
 {
-    word_t sum = 0;
-    uint8_t i;
-    i = 4;
-    do {
-        --i;
-        sum += x[i];
-    } while (i);
-    i = 4;
-    do {
-        --i;
-        dest[i] = rotl(c[i] + sum - x[v[i]], rot[i] );
-    } while (i);
-    sum = 0;
-    i = 4;
-    do {
-        --i;
-        sum ^= dest[i];
-    } while (i);
-    i = 4;
-    do {
-        --i;
-        dest[i] ^= sum;
-    } while (i);
+    word_t sum;
+    dest[0] = rotl(PI_MU_CONST_0 + x[0] + x[1] + x[2], PI_MU_ROT_CONST_0 );
+    dest[1] = rotl(PI_MU_CONST_1 + x[0] + x[1] + x[3], PI_MU_ROT_CONST_1 );
+    dest[2] = rotl(PI_MU_CONST_2 + x[0] + x[2] + x[3], PI_MU_ROT_CONST_2 );
+    dest[3] = rotl(PI_MU_CONST_3 + x[1] + x[2] + x[3], PI_MU_ROT_CONST_3 );
+    sum = dest[0] ^ dest[1] ^ dest[2] ^ dest[3];
+    dest[0] ^= sum;
+    dest[1] ^= sum;
+    dest[2] ^= sum;
+    dest[3] ^= sum;
 }
 
-static const word_t mu_const[4] = PI_MU_CONST;
-
-static const uint8_t mu_v_const[4] = PI_MU_V_CONST;
-
-static const uint8_t mu_rot_const[4] = PI_MU_ROT_CONST;
-
-static const word_t ny_const[4] = PI_NY_CONST;
-
-static const uint8_t ny_v_const[4] = PI_NY_V_CONST;
-
-static const uint8_t ny_rot_const[4] = PI_NY_ROT_CONST;
+static inline void ny(
+        word_t dest[4],
+        const word_t x[4])
+{
+    word_t sum;
+    dest[0] = rotl(PI_NY_CONST_0 + x[0] + x[2] + x[3], PI_NY_ROT_CONST_0 );
+    dest[1] = rotl(PI_NY_CONST_1 + x[1] + x[2] + x[3], PI_NY_ROT_CONST_1 );
+    dest[2] = rotl(PI_NY_CONST_2 + x[0] + x[1] + x[2], PI_NY_ROT_CONST_2 );
+    dest[3] = rotl(PI_NY_CONST_3 + x[0] + x[1] + x[3], PI_NY_ROT_CONST_3 );
+    sum = dest[0] ^ dest[1] ^ dest[2] ^ dest[3];
+    dest[0] ^= sum;
+    dest[1] ^= sum;
+    dest[2] ^= sum;
+    dest[3] ^= sum;
+}
 
 static const word_t pi_const[8][4] = PI_CONST;
 
-static void mu(
-        word_t dest[4],
-        const word_t x[4])
-{
-    word_t t[4];
-    phi(t, x, mu_const, mu_v_const, mu_rot_const);
-    dest[0] = t[2];
-    dest[1] = t[3];
-    dest[2] = t[0];
-    dest[3] = t[1];
-}
-
-static void ny(
-        word_t dest[4],
-        const word_t x[4])
-{
-    phi(dest, x, ny_const, ny_v_const, ny_rot_const);
-}
-
-static void sigma(
+static inline void sigma(
         word_t dest[4],
         const word_t x1[4],
         const word_t x2[4] )
 {
-    dest[3] = x1[0] + x2[0];
-    dest[0] = x1[1] + x2[1];
-    dest[1] = x1[2] + x2[2];
-    dest[2] = x1[3] + x2[3];
+    dest[3] = x1[2] + x2[0];
+    dest[0] = x1[3] + x2[1];
+    dest[1] = x1[0] + x2[2];
+    dest[2] = x1[1] + x2[3];
 }
 
 static void ast(
@@ -387,17 +388,17 @@ static void inject_block(
 static void inject_last_block(
         state_t a,
         const void *block,
-        size_t length_b )
+        size_t length_B )
 {
     uint8_t t[PI_RATE_BYTES];
-    if (length_b >= PI_RATE_BITS) {
+    if (length_B >= PI_RATE_BYTES) {
         /* error */
     	printf("ERROR <%s %s %d>\n", __FILE__, __func__, __LINE__);
         return;
     }
     memset(t, 0, sizeof(t));
-    memcpy(t, block, (length_b + 7) / 8);
-    t[length_b / 8] |= 1 << (length_b & 7);
+    memcpy(t, block, length_B);
+    t[length_B] = 1;
     inject_block(a, t);
 }
 
@@ -420,21 +421,16 @@ static void replace_block(
 static void replace_last_block(
         state_t a,
         const void *block,
-        size_t length_b  )
+        size_t length_B  )
 {
     uint8_t t[PI_RATE_BYTES];
-    if (length_b >= PI_RATE_BITS) {
+    if (length_B >= PI_RATE_BYTES) {
         /* error */
     	printf("ERROR <%s %s %d>\n", __FILE__, __func__, __LINE__);
         return;
     }
     extract_block(t, a);
-    memcpy(t, block, length_b / 8);
-    if (length_b % 8 != 0) {
-    	t[length_b / 8] &= 0xff << (length_b % 8);
-	t[length_b / 8] |= ((uint8_t *)block)[length_b / 8];
-    }
-//    t[length_b / 8] ^= 1 << (length_b % 8);
+    memcpy(t, block, length_B);
     replace_block(a, t);
 }
 
@@ -442,23 +438,20 @@ static void replace_last_block(
 int PI_INIT(
         PI_CTX *ctx,
         const void *key,
-        size_t key_length_b,
+        size_t key_length_B,
         const void *pmn,
-        size_t pmn_length_b)
+        size_t pmn_length_B)
 {
 	int i;
 	uint8_t setup_buf[PI_IS_BITS / 8];
-	if ((key_length_b % 8 != 0) || (pmn_length_b % 8 != 0)) {
-		return -1;
-	}
-    if (key_length_b / 8 + pmn_length_b / 8 + 1 >= PI_IS_BITS / 8) {
+    if (key_length_B + pmn_length_B + 1 >= PI_IS_BITS / 8) {
         return -1;
     }
     memset(ctx->tag, 0, sizeof(ctx->tag));
     memset(setup_buf, 0, sizeof(setup_buf));
-    memcpy(setup_buf, key, key_length_b / 8);
-    memcpy(&setup_buf[key_length_b / 8], pmn, pmn_length_b / 8);
-    setup_buf[key_length_b / 8 + pmn_length_b / 8] = 1;
+    memcpy(setup_buf, key, key_length_B);
+    memcpy(&setup_buf[key_length_B], pmn, pmn_length_B);
+    setup_buf[key_length_B + pmn_length_B] = 1;
     for (i = 0; i < 16; ++i) {
         ctx->cis[i / 4][i % 4] = load_word_little(&setup_buf[i * PI_WORD_SIZE / 8]);
     }
@@ -485,19 +478,19 @@ void PI_PROCESS_AD_BLOCK(
 void PI_PROCESS_AD_LAST_BLOCK(
         PI_CTX *ctx,
         const void *ad,
-        size_t ad_length_b,
+        size_t ad_length_B,
         unsigned long ad_num )
 {
     state_t a;
-    while (ad_length_b >= PI_AD_BLOCK_LENGTH_BITS) {
+    while (ad_length_B >= PI_AD_BLOCK_LENGTH_BYTES) {
         PI_PROCESS_AD_BLOCK(ctx, ad, ad_num);
         ad_num++;
-        ad_length_b -= PI_AD_BLOCK_LENGTH_BITS;
+        ad_length_B -= PI_AD_BLOCK_LENGTH_BYTES;
         ad = &((uint8_t*)ad)[PI_AD_BLOCK_LENGTH_BYTES];
     }
 
     ctr_trans(ctx, a, ad_num);
-    inject_last_block(a, ad, ad_length_b);
+    inject_last_block(a, ad, ad_length_B);
     pi((word_t*)a);
     add_tag(ctx, a);
     ctx->ctr += ad_num;
@@ -505,7 +498,7 @@ void PI_PROCESS_AD_LAST_BLOCK(
     pi((word_t*)ctx->cis);
 }
 
-void PI_PROCESS_SMN(
+void PI_ENCRYPT_SMN(
         PI_CTX *ctx,
         void *c0,
         const void *smn)
@@ -556,25 +549,25 @@ void PI_ENCRYPT_LAST_BLOCK(
         PI_CTX *ctx,
         void *dest,
         const void *src,
-        size_t length_b,
+        size_t length_B,
         unsigned long num )
 {
     state_t a;
-    while (length_b >= PI_PT_BLOCK_LENGTH_BITS) {
+    while (length_B >= PI_PT_BLOCK_LENGTH_BYTES) {
         PI_ENCRYPT_BLOCK(ctx, dest, src, num);
         num++;
-        length_b -= PI_PT_BLOCK_LENGTH_BITS;
+        length_B -= PI_PT_BLOCK_LENGTH_BYTES;
         src = &((uint8_t*)src)[PI_PT_BLOCK_LENGTH_BYTES];
         if (dest) {
             dest = &((uint8_t*)dest)[PI_CT_BLOCK_LENGTH_BYTES];
         }
     }
     ctr_trans(ctx, a, num);
-    inject_last_block(a, src, length_b);
+    inject_last_block(a, src, length_B);
     if (dest) {
         uint8_t tmp[PI_PT_BLOCK_LENGTH_BYTES];
         extract_block(tmp, a);
-        memcpy(dest, tmp, (length_b + 7) / 8);
+        memcpy(dest, tmp, length_B);
     }
     pi((word_t*)a);
     add_tag(ctx, a);
@@ -620,13 +613,13 @@ void PI_DECRYPT_LAST_BLOCK(
 {
     state_t a;
     ctr_trans(ctx, a, num);
-    inject_last_block(a, src, length_B * 8);
+    inject_last_block(a, src, length_B);
     if (dest) {
     	uint8_t tmp[PI_PT_BLOCK_LENGTH_BYTES];
         extract_block(tmp, a);
         memcpy(dest, tmp, length_B);
     }
-    replace_last_block(a, src, length_B * 8);
+    replace_last_block(a, src, length_B);
     pi((word_t*)a);
     add_tag(ctx, a);
 }
@@ -634,8 +627,6 @@ void PI_DECRYPT_LAST_BLOCK(
 void PI_ENCRYPT_SIMPLE(
         void *cipher,
         size_t *cipher_len_B,
-        void *tag,
-        size_t *tag_length_B,
         const void *msg,
         size_t msg_len_B,
         const void *ad,
@@ -649,7 +640,7 @@ void PI_ENCRYPT_SIMPLE(
 {
     unsigned i;
     PI_CTX ctx;
-    if (PI_INIT(&ctx, key, key_len_B * 8, nonce_public, nonce_public_len_B * 8)) {
+    if (PI_INIT(&ctx, key, key_len_B, nonce_public, nonce_public_len_B)) {
         printf("ERROR! <%s %s %d>\n", __FILE__, __func__, __LINE__);
         return;
     }
@@ -659,10 +650,10 @@ void PI_ENCRYPT_SIMPLE(
         ad_len_B -= PI_AD_BLOCK_LENGTH_BYTES;
         ad = &((const uint8_t*)ad)[PI_AD_BLOCK_LENGTH_BYTES];
     }
-    PI_PROCESS_AD_LAST_BLOCK(&ctx, ad, ad_len_B * 8, i);
+    PI_PROCESS_AD_LAST_BLOCK(&ctx, ad, ad_len_B, i);
     *cipher_len_B = 0;
     if (nonce_secret) {
-        PI_PROCESS_SMN(&ctx, cipher, nonce_secret);
+        PI_ENCRYPT_SMN(&ctx, cipher, nonce_secret);
         *cipher_len_B += PI_CT_BLOCK_LENGTH_BYTES;
         cipher = &((uint8_t*)cipher)[PI_CT_BLOCK_LENGTH_BYTES];
     }
@@ -674,12 +665,11 @@ void PI_ENCRYPT_SIMPLE(
         *cipher_len_B += PI_CT_BLOCK_LENGTH_BYTES;
         msg_len_B -= PI_PT_BLOCK_LENGTH_BYTES;
     }
-    PI_ENCRYPT_LAST_BLOCK(&ctx, cipher, msg, msg_len_B * 8, i);
+    PI_ENCRYPT_LAST_BLOCK(&ctx, cipher, msg, msg_len_B, i);
     *cipher_len_B += msg_len_B;
-    PI_EXTRACT_TAG(&ctx, tag);
-    if (tag_length_B) {
-    	*tag_length_B = PI_TAG_BYTES;
-    }
+    cipher = &((uint8_t*)cipher)[msg_len_B];
+    PI_EXTRACT_TAG(&ctx, cipher);
+    *cipher_len_B += PI_TAG_BYTES;
 }
 
 int PI_DECRYPT_SIMPLE(
@@ -708,7 +698,7 @@ int PI_DECRYPT_SIMPLE(
     if (nonce_secret && (cipher_len_B < PI_CT_BLOCK_LENGTH_BYTES + PI_TAG_BYTES)) {
     	return -3;
     }
-    if (PI_INIT(&ctx, key, key_len_B * 8, nonce_public, nonce_public_len_B * 8)) {
+    if (PI_INIT(&ctx, key, key_len_B, nonce_public, nonce_public_len_B)) {
         printf("ERROR! <%s %s %d>\n", __FILE__, __func__, __LINE__);
         return -2;
     }
@@ -718,12 +708,12 @@ int PI_DECRYPT_SIMPLE(
         ad_len_B -= PI_AD_BLOCK_LENGTH_BYTES;
         ad = &((const uint8_t*)ad)[PI_AD_BLOCK_LENGTH_BYTES];
     }
-    PI_PROCESS_AD_LAST_BLOCK(&ctx, ad, ad_len_B * 8, i);
+    PI_PROCESS_AD_LAST_BLOCK(&ctx, ad, ad_len_B, i);
     *msg_len_B = 0;
     if (nonce_secret) {
         PI_DECRYPT_SMN(&ctx, nonce_secret, cipher);
         cipher_len_B -= PI_CT_BLOCK_LENGTH_BYTES;
-	cipher = &((uint8_t*)cipher)[PI_CT_BLOCK_LENGTH_BYTES];
+        cipher = &((uint8_t*)cipher)[PI_CT_BLOCK_LENGTH_BYTES];
     }
     i = 1;
     while (cipher_len_B - PI_TAG_BYTES >= PI_PT_BLOCK_LENGTH_BYTES) {

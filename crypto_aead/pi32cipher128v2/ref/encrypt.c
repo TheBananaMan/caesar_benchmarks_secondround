@@ -5,7 +5,7 @@
  *      Author: bg
  */
 
-//#include "crypto_aead.h"
+#include "crypto_aead.h"
 #include "pi-cipher.h"
 #include "api.h"
 /*
@@ -47,12 +47,10 @@ int crypto_aead_encrypt(
 ... and secret key k[0],k[1],...
 ...
 */
-	size_t x, v;
+	size_t x;
 	PI_ENCRYPT_SIMPLE(
 			c,
 			&x,
-			&c[mlen + (nsec ? PI_CT_BLOCK_LENGTH_BYTES : 0)],
-			&v,
 			m,
 			mlen,
 			ad,
@@ -62,7 +60,7 @@ int crypto_aead_encrypt(
 			CRYPTO_NPUBBYTES,
 			k,
 			CRYPTO_KEYBYTES );
-	*clen = x + PI_TAG_BYTES;
+	*clen = x;
 	return 0;
 }
 
