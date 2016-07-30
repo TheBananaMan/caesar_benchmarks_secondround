@@ -19,7 +19,7 @@ SET(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" ${CMAKE_MODULE_PATH})
 INCLUDE(setDefaultSettings)
 #INCLUDE(setPlatformAndCompilerFlags)
 
-SET(CMAKE_C_FLAGS "-Ofast -fno-stack-protector -march=native")
+SET(CMAKE_C_FLAGS "-Ofast -fno-stack-protector -march=native -std=gnu11 -I ${PROJECT_SOURCE_DIR}/include")
 
 MESSAGE(STATUS "${CMAKE_C_FLAGS}")
 
@@ -63,7 +63,7 @@ FOREACH(CIPHER ${LISTOFCIPHERS})
 		# link against the corresponding framework library
 		TARGET_LINK_LIBRARIES( "${TargetName}" "m" "-lcrypto")
 		# add preprocessor define for the target
-		SET_TARGET_PROPERTIES("${TargetName}" PROPERTIES COMPILE_FLAGS "-D ${CIPHER} -D ${OPT}")
+		SET_TARGET_PROPERTIES("${TargetName}" PROPERTIES COMPILE_FLAGS "-D cipher_${CIPHER} -D cipher_opt_${OPT} -DCAESAR_CIPHER=${CIPHER} -DCAESAR_OPT=${OPT} -I ${CIPHER_PATH}/${CIPHER}/${OPT} ")
 	ENDFOREACH()
 ENDFOREACH()
 
@@ -84,19 +84,20 @@ FOREACH(CIPHER ${LISTOFCIPHERS})
 		# link against the corresponding framework library
 		TARGET_LINK_LIBRARIES( "${TargetName}" "m" "-lcrypto")
 		# add preprocessor define for the target
-		SET_TARGET_PROPERTIES("${TargetName}" PROPERTIES COMPILE_FLAGS "-D ${CIPHER} -D ${OPT}")
+		SET_TARGET_PROPERTIES("${TargetName}" PROPERTIES COMPILE_FLAGS "-D cipher_${CIPHER} -D cipher_opt_${OPT} -DCAESAR_CIPHER=${CIPHER} -DCAESAR_OPT=${OPT} -I ${CIPHER_PATH}/${CIPHER}/${OPT} ")
 	ENDFOREACH()
 ENDFOREACH()
 
 
-#MESSAGE(STATUS "------------------------------------------------------------------------------")
-#MESSAGE(STATUS "List of ciphers:")
-#FOREACH(CIPHER ${LISTOFCIPHERS})
-#	MESSAGE(STATUS "CIPHER:		${CIPHER}")
-#	FOREACH(OPT ${OPTIMIZATIONS})
-#		MESSAGE(STATUS "	OPTIMIZATION:    ${OPT}")
-#	ENDFOREACH()
-#ENDFOREACH()
-#MESSAGE(STATUS "make timing_<CIPHER>_<OPT> ................ Builds target for Time Measurement")
-#MESSAGE(STATUS "make testing_<CIPHER>_<OPT> ................Builds target for Testing")
-#MESSAGE(STATUS "------------------------------------------------------------------------------")
+MESSAGE(STATUS "------------------------------------------------------------------------------")
+MESSAGE(STATUS "List of ciphers:")
+FOREACH(CIPHER ${LISTOFCIPHERS})
+	MESSAGE(STATUS "CIPHER:		${CIPHER}")
+	SUBDIRLIST(OPTIMIZATIONS "${CIPHER_PATH}/${CIPHER}")
+	FOREACH(OPT ${OPTIMIZATIONS})
+		MESSAGE(STATUS "	OPTIMIZATION:    ${OPT}")
+	ENDFOREACH()
+ENDFOREACH()
+MESSAGE(STATUS "make timing_<CIPHER>_<OPT> ................ Builds target for Time Measurement")
+MESSAGE(STATUS "make testing_<CIPHER>_<OPT> ................Builds target for Testing")
+MESSAGE(STATUS "------------------------------------------------------------------------------")
