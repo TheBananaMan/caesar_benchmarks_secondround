@@ -334,11 +334,11 @@ void hs1_hash(hs1siv_ctx_t *ctx, void *in, unsigned inbytes, void *out) {
 
     prf_hash2(h, (uint32_t *)in, inbytes, (uint32_t *)ctx->nh_key, (uint64_t *)ctx->poly_key, (uint64_t *)ctx->asu_key);
     #if HS1_SIV_HASH_RNDS > 2
-    prf_hash2(h+k, (uint32_t *)in, inbytes, (uint32_t *)ctx->nh_key+8, (uint64_t *)ctx->poly_key+2, (uint64_t *)ctx->asu_key+3);
+    prf_hash2(h+k, (uint32_t *)in, inbytes, (uint32_t *)ctx->nh_key+8, (uint64_t *)ctx->poly_key+2, (uint64_t *)ctx->asu_key+6);
     #if HS1_SIV_HASH_RNDS > 4
-    prf_hash2(h+2*k, (uint32_t *)in, inbytes, (uint32_t *)ctx->nh_key+16, (uint64_t *)ctx->poly_key+4, (uint64_t *)ctx->asu_key+6);
+    prf_hash2(h+2*k, (uint32_t *)in, inbytes, (uint32_t *)ctx->nh_key+16, (uint64_t *)ctx->poly_key+4, (uint64_t *)ctx->asu_key+12);
     #if HS1_SIV_HASH_RNDS > 6
-    prf_hash2(h+3*k, (uint32_t *)in, inbytes, (uint32_t *)ctx->nh_key+24, (uint64_t *)ctx->poly_key+6, (uint64_t *)ctx->asu_key+9);
+    prf_hash2(h+3*k, (uint32_t *)in, inbytes, (uint32_t *)ctx->nh_key+24, (uint64_t *)ctx->poly_key+6, (uint64_t *)ctx->asu_key+18);
     #endif
     #endif
     #endif
